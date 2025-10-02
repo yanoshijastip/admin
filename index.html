@@ -262,6 +262,7 @@
       appId: "1:115036538813:web:4113ceb9e5a89c311534d4",
       measurementId: "G-XFNNC4HYM6"
     };
+    
     const ADMIN_UID = "Vjsy4i8HKBaLC1994rmB63IobV02";
 
     firebase.initializeApp(firebaseConfig);
@@ -373,23 +374,46 @@
             });
     }
 
+    let typingTimeout = null;
+    
     async function selectConversationForAdmin(userId, userData) {
         selectedConversationId = userId;
         welcomeScreen.classList.add('hidden');
         chatContent.classList.remove('hidden');
-
-        // Update UI
+    
+        // Update UI (Ini sudah benar di kode Anda)
         document.getElementById('admin-chat-header').textContent = userData.name;
         document.getElementById('user-details').textContent = `WA: ${userData.whatsapp || '-'}`;
         document.querySelectorAll('.conversation-item').forEach(li => {
             li.classList.remove('active');
             if (li.getAttribute('data-uid') === userId) li.classList.add('active');
         });
-
-        // Reset notifikasi
-        await db.collection('chats').doc(userId).set({ adminUnreadCount: 0 }, { merge: true });
-
-        // Load pesan
+    
+        // --- BAGIAN YANG HILANG DI KODE ANDA ---
+    
+        // TAMBAHAN 1: Logika untuk "admin mengetik" (typing indicator)
+        const adminInput = document.getElementById('admin-message-input');
+        adminInput.oninput = () => {
+            // Beri tahu user bahwa admin sedang mengetik
+            db.collection('chats').doc(userId).set({ adminIsTyping: true }, { merge: true });
+        
+            // Hapus status 'mengetik' setelah 1.5 detik tidak ada ketikan
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                db.collection('chats').doc(userId).set({ adminIsTyping: false }, { merge: true });
+            }, 1500);
+        };
+    
+        // TAMBAHAN 2: Logika untuk "pesan dibaca" (read receipts) dan reset notifikasi
+        // Ini akan mengupdate timestamp kapan terakhir kali admin membuka chat ini.
+        await db.collection('chats').doc(userId).set({
+            adminUnreadCount: 0, // Reset jumlah pesan belum dibaca
+            lastReadByAdmin: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    
+        // --- AKHIR DARI BAGIAN YANG HILANG ---
+    
+        // Load pesan (Ini sudah benar di kode Anda)
         loadMessagesForAdmin(userId);
     }
     
