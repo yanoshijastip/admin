@@ -158,9 +158,13 @@
         </main>
     </div>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
 <script>
-    // Seluruh kode JavaScript dari jawaban sebelumnya tidak ada yang berubah.
-    // Kode JS Anda sudah benar, masalahnya ada di CSS.
+    // --- KONFIGURASI ---
+    // Pastikan Anda mengganti ini dengan konfigurasi Anda sendiri
     const firebaseConfig = {
         apiKey: "AIzaSyA_2R9DBUUpibY2u6MEenCTDDOZ-w0vlx8",
         authDomain: "aplikasi-chat-d05ce.firebaseapp.com",
@@ -171,9 +175,210 @@
         measurementId: "G-XFNNC4HYM6"
     };
     const ADMIN_UID = "Vjsy4i8HKBaLC1994rmB63IobV02";
+
+    // Inisialisasi Firebase
     firebase.initializeApp(firebaseConfig);
-    // ... (sisa kode JavaScript Anda sama persis)
-    const auth=firebase.auth(),db=firebase.firestore();let currentUser=null,selectedConversationId=null,unsubscribeMessages=null,unsubscribeConversations=null,originalTitle=document.title,typingTimeout=null;const adminLoginView=document.getElementById("admin-login-view"),dashboard=document.getElementById("dashboard"),conversationsList=document.getElementById("conversations-list"),searchInput=document.getElementById("search-input"),themeToggle=document.getElementById("theme-toggle"),welcomeScreen=document.getElementById("welcome-screen"),chatContent=document.getElementById("chat-content"),backBtn=document.getElementById("back-to-list-btn");backBtn.addEventListener("click",(()=>{dashboard.classList.remove("view-chat"),selectedConversationId=null})),auth.onAuthStateChanged((e=>{e&&e.uid===ADMIN_UID?(adminLoginView.classList.add("hidden"),dashboard.classList.remove("hidden"),loadUserConversations()):(adminLoginView.classList.remove("hidden"),dashboard.classList.add("hidden"),unsubscribeMessages&&unsubscribeMessages(),unsubscribeConversations&&unsubscribeConversations())})),themeToggle.addEventListener("click",(()=>{document.body.classList.toggle("dark-mode"),document.body.classList.contains("dark-mode")?(themeToggle.classList.replace("fa-moon","fa-sun"),localStorage.setItem("theme","dark")):(themeToggle.classList.replace("fa-sun","fa-moon"),localStorage.setItem("theme","light"))})),localStorage.getItem("theme")==="dark"&&(document.body.classList.add("dark-mode"),themeToggle.classList.replace("fa-moon","fa-sun")),searchInput.addEventListener("keyup",(()=>{const e=searchInput.value.toLowerCase();document.querySelectorAll(".conversation-item").forEach((t=>{const o=t.querySelector(".name").textContent.toLowerCase();t.style.display=o.includes(e)?"flex":"none"}))}));async function loadUserConversations(){unsubscribeConversations&&unsubscribeConversations(),unsubscribeConversations=db.collection("chats").orderBy("lastUpdate","desc").onSnapshot(async e=>{const t=e.docs.filter((e=>"resolved"!==e.data().status)).map(async e=>{const t=e.id,o=e.data(),s=await db.collection("users").doc(t).get();if(!s.exists)return null;const n=s.data(),a=new Date,i=n.lastSeen?n.lastSeen.toDate():new Date(0),d=a-i<6e4,l=o.adminUnreadCount||0;return l>0&&selectedConversationId!==t&&playNotification(),{id:t,name:n.name,isOnline:d,lastSeen:i,unreadCount:l,userData:n}});renderConversationList((await Promise.all(t)).filter((e=>null!==e)))})}function renderConversationList(e){conversationsList.innerHTML="",e.forEach((e=>{const t=document.createElement("li");t.classList.add("conversation-item"),e.id===selectedConversationId&&t.classList.add("active"),t.setAttribute("data-uid",e.id),t.innerHTML=`<span class="status-dot ${e.isOnline?"online":""}"></span><div class="conv-details"><div class="name">${e.name}</div></div><div class="conv-info"><div class="timestamp">${e.lastSeen.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</div>${e.unreadCount>0?`<span class="notification-badge">${e.unreadCount}</span>`:""}</div>`,t.onclick=()=>selectConversationForAdmin(e.id,e.userData),conversationsList.appendChild(t)}))}async function selectConversationForAdmin(e,t){selectedConversationId=e,welcomeScreen.classList.add("hidden"),chatContent.classList.remove("hidden"),document.getElementById("admin-chat-header").textContent=t.name,document.getElementById("user-details").textContent=`WA: ${t.whatsapp||"-"}`.trim(),dashboard.classList.add("view-chat"),document.querySelectorAll(".conversation-item").forEach((t=>{t.classList.remove("active"),t.getAttribute("data-uid")===e&&t.classList.add("active")}));const o=document.getElementById("admin-message-input");o.oninput=()=>{db.collection("chats").doc(e).set({adminIsTyping:!0},{merge:!0}),clearTimeout(typingTimeout),typingTimeout=setTimeout((()=>{db.collection("chats").doc(e).set({adminIsTyping:!1},{merge:!0})}),1500)},await db.collection("chats").doc(e).set({adminUnreadCount:0,lastReadByAdmin:firebase.firestore.FieldValue.serverTimestamp()},{merge:!0}),loadMessagesForAdmin(e)}function loadMessagesForAdmin(e){const t=document.getElementById("admin-messages");unsubscribeMessages&&unsubscribeMessages(),unsubscribeMessages=db.collection("chats").doc(e).collection("messages").orderBy("timestamp").onSnapshot((e=>{t.innerHTML="",e.forEach((e=>{const o=e.data(),s=createMessageElement(o.text,o.senderId===ADMIN_UID);t.appendChild(s)})),t.scrollTop=t.scrollHeight}))}function handleEnterKey(e){"Enter"===e.key&&sendMessageAsAdmin()}async function sendMessageAsAdmin(){const e=document.getElementById("admin-message-input"),t=e.value.trim();if(""!==t&&selectedConversationId){const o={text:t,senderId:ADMIN_UID,receiverId:selectedConversationId,timestamp:firebase.firestore.FieldValue.serverTimestamp()};await db.collection("chats").doc(selectedConversationId).collection("messages").add(o),await db.collection("chats").doc(selectedConversationId).set({lastUpdate:firebase.firestore.FieldValue.serverTimestamp()},{merge:!0}),e.value=""}}function useCannedResponse(e){document.getElementById("admin-message-input").value=e,sendMessageAsAdmin()}async function resolveChat(){selectedConversationId&&(await db.collection("chats").doc(selectedConversationId).set({status:"resolved"},{merge:!0}),alert("Percakapan ditandai selesai."),chatContent.classList.add("hidden"),welcomeScreen.classList.remove("hidden"),selectedConversationId=null,dashboard.classList.remove("view-chat"))}function playNotification(){document.getElementById("notification-sound").play().catch((e=>{console.log("Notifikasi suara diblokir oleh browser.")}));let e=!1;const t=setInterval((()=>{document.title=e?originalTitle:"Ada Pesan Baru!",e=!e}),1e3);window.onfocus=()=>{clearInterval(t),document.title=originalTitle}}function createMessageElement(e,t){const o=document.createElement("div");return o.classList.add("message",t?"sent":"received"),o.innerHTML=`<span>${e}</span>`,o}async function handleAdminLogin(){const e=document.getElementById("admin-email").value,t=document.getElementById("admin-password").value;try{await auth.signInWithEmailAndPassword(e,t)}catch(e){alert("Login Admin Gagal: "+e.message)}}function handleLogout(){auth.signOut()}
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- VARIABEL & ELEMEN DOM ---
+    let currentUser = null;
+    let selectedConversationId = null;
+    let unsubscribeMessages = null;
+    let unsubscribeConversations = null;
+    let originalTitle = document.title;
+    let typingTimeout = null;
+    
+    const adminLoginView = document.getElementById('admin-login-view');
+    const dashboard = document.getElementById('dashboard');
+    const conversationsList = document.getElementById('conversations-list');
+    const searchInput = document.getElementById('search-input');
+    const themeToggle = document.getElementById('theme-toggle');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const chatContent = document.getElementById('chat-content');
+    const backBtn = document.getElementById('back-to-list-btn');
+
+    // --- EVENT LISTENERS ---
+    backBtn.addEventListener('click', () => {
+        dashboard.classList.remove('view-chat');
+        selectedConversationId = null;
+    });
+
+    themeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        if (document.body.classList.contains('dark-mode')) {
+            themeToggle.classList.replace('fa-moon', 'fa-sun');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            themeToggle.classList.replace('fa-sun', 'fa-moon');
+            localStorage.setItem('theme', 'light');
+        }
+    });
+
+    searchInput.addEventListener('keyup', () => {
+        const query = searchInput.value.toLowerCase();
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            const name = item.querySelector('.name').textContent.toLowerCase();
+            item.style.display = name.includes(query) ? 'flex' : 'none';
+        });
+    });
+
+    // --- LOGIKA UTAMA ---
+    auth.onAuthStateChanged(user => {
+        if (user && user.uid === ADMIN_UID) {
+            adminLoginView.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+            loadUserConversations();
+        } else {
+            adminLoginView.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+            if (unsubscribeMessages) unsubscribeMessages();
+            if (unsubscribeConversations) unsubscribeConversations();
+        }
+    });
+
+    if (localStorage.getItem('theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeToggle.classList.replace('fa-moon', 'fa-sun');
+    }
+
+    // --- FUNGSI-FUNGSI INTI ---
+    function loadUserConversations() {
+        if (unsubscribeConversations) {
+            unsubscribeConversations();
+        }
+        unsubscribeConversations = db.collection('chats').orderBy('lastUpdate', 'desc')
+            .onSnapshot(async (snapshot) => {
+                const conversationPromises = snapshot.docs
+                    .filter(doc => doc.data().status !== 'resolved')
+                    .map(async (chatDoc) => {
+                        const chatId = chatDoc.id;
+                        const chatData = chatDoc.data();
+                        const userDoc = await db.collection('users').doc(chatId).get();
+                        if (!userDoc.exists) return null;
+                        const userData = userDoc.data();
+                        const now = new Date();
+                        const lastSeen = userData.lastSeen ? userData.lastSeen.toDate() : new Date(0);
+                        const isOnline = (now - lastSeen) < 60000;
+                        const unreadCount = chatData.adminUnreadCount || 0;
+                        if (unreadCount > 0 && selectedConversationId !== chatId) playNotification();
+                        return { id: chatId, name: userData.name, isOnline: isOnline, lastSeen: lastSeen, unreadCount: unreadCount, userData: userData };
+                    });
+                const conversations = (await Promise.all(conversationPromises)).filter(c => c !== null);
+                renderConversationList(conversations);
+            });
+    }
+
+    function renderConversationList(conversations) {
+        conversationsList.innerHTML = '';
+        conversations.forEach(conv => {
+            const li = document.createElement('li');
+            li.classList.add('conversation-item');
+            if (conv.id === selectedConversationId) li.classList.add('active');
+            li.setAttribute('data-uid', conv.id);
+            li.innerHTML = `
+                <span class="status-dot ${conv.isOnline ? 'online' : ''}"></span>
+                <div class="conv-details"><div class="name">${conv.name}</div></div>
+                <div class="conv-info">
+                    <div class="timestamp">${conv.lastSeen.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                    ${conv.unreadCount > 0 ? `<span class="notification-badge">${conv.unreadCount}</span>` : ''}
+                </div>`;
+            li.onclick = () => selectConversationForAdmin(conv.id, conv.userData);
+            conversationsList.appendChild(li);
+        });
+    }
+
+    async function selectConversationForAdmin(userId, userData) {
+        selectedConversationId = userId;
+        welcomeScreen.classList.add('hidden');
+        chatContent.classList.remove('hidden');
+        document.getElementById('admin-chat-header').textContent = userData.name;
+        document.getElementById('user-details').textContent = `WA: ${userData.whatsapp || '-'}`;
+        dashboard.classList.add('view-chat');
+        document.querySelectorAll('.conversation-item').forEach(li => {
+            li.classList.remove('active');
+            if (li.getAttribute('data-uid') === userId) li.classList.add('active');
+        });
+        const adminInput = document.getElementById('admin-message-input');
+        adminInput.oninput = () => {
+            db.collection('chats').doc(userId).set({ adminIsTyping: true }, { merge: true });
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                db.collection('chats').doc(userId).set({ adminIsTyping: false }, { merge: true });
+            }, 1500);
+        };
+        await db.collection('chats').doc(userId).set({ adminUnreadCount: 0, lastReadByAdmin: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        loadMessagesForAdmin(userId);
+    }
+
+    function loadMessagesForAdmin(userId) {
+        const messagesDiv = document.getElementById('admin-messages');
+        if (unsubscribeMessages) unsubscribeMessages();
+        unsubscribeMessages = db.collection('chats').doc(userId).collection('messages').orderBy('timestamp').onSnapshot(snapshot => {
+            messagesDiv.innerHTML = '';
+            snapshot.forEach(doc => {
+                const msg = doc.data();
+                const el = createMessageElement(msg.text, msg.senderId === ADMIN_UID);
+                messagesDiv.appendChild(el);
+            });
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+    }
+
+    function handleEnterKey(event) { if (event.key === 'Enter') sendMessageAsAdmin(); }
+
+    async function sendMessageAsAdmin() {
+        const input = document.getElementById('admin-message-input');
+        const text = input.value.trim();
+        if (text === '' || !selectedConversationId) return;
+        const message = { text: text, senderId: ADMIN_UID, receiverId: selectedConversationId, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+        await db.collection('chats').doc(selectedConversationId).collection('messages').add(message);
+        await db.collection('chats').doc(selectedConversationId).set({ lastUpdate: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        input.value = '';
+    }
+
+    function useCannedResponse(text) {
+        document.getElementById('admin-message-input').value = text;
+        sendMessageAsAdmin();
+    }
+
+    async function resolveChat() {
+        if (!selectedConversationId) return;
+        await db.collection('chats').doc(selectedConversationId).set({ status: 'resolved' }, { merge: true });
+        alert('Percakapan ditandai selesai.');
+        chatContent.classList.add('hidden');
+        welcomeScreen.classList.remove('hidden');
+        selectedConversationId = null;
+        dashboard.classList.remove('view-chat');
+    }
+
+    function playNotification() {
+        document.getElementById('notification-sound').play().catch(error => { console.log("Notifikasi suara diblokir oleh browser."); });
+        let isFlashing = false;
+        const interval = setInterval(() => { document.title = isFlashing ? originalTitle : 'Ada Pesan Baru!'; isFlashing = !isFlashing; }, 1000);
+        window.onfocus = () => { clearInterval(interval); document.title = originalTitle; };
+    }
+
+    function createMessageElement(text, isSent) {
+        const el = document.createElement('div');
+        el.classList.add('message', isSent ? 'sent' : 'received');
+        el.innerHTML = `<span>${text}</span>`;
+        return el;
+    }
+
+    async function handleAdminLogin() {
+        const email = document.getElementById('admin-email').value;
+        const password = document.getElementById('admin-password').value;
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+        } catch (error) {
+            alert("Login Admin Gagal: " + error.message);
+        }
+    }
+
+    function handleLogout() {
+        auth.signOut();
+    }
 </script>
 </body>
 </html>
