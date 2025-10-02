@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        input { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background-color: #007BFF; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .hidden { display: none !important; }
+        #logout-btn { background-color: #dc3545; position:absolute; top:20px; right:40px; width: auto; padding: 5px 10px;}
+        #admin-dashboard-view { display: flex; gap: 20px; }
+        #admin-user-list { flex: 1; border-right: 1px solid #ddd; padding-right: 20px; max-height: 400px; overflow-y: auto; }
+        #admin-user-list ul { list-style: none; padding: 0; }
+        #admin-user-list li { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        #admin-user-list li:hover, #admin-user-list li.active { background-color: #f0f0f0; }
+        #admin-chat-window { flex: 2; }
+        .messages { height: 300px; border: 1px solid #ddd; overflow-y: scroll; padding: 10px; margin-bottom: 10px; }
+        .message { margin-bottom: 10px; max-width: 70%; }
+        .message span { display: inline-block; background: #007BFF; color: white; padding: 8px 12px; border-radius: 15px; }
+        .message.sent { margin-left: auto; text-align: right; }
+        .message.received { margin-right: auto; text-align: left; }
+        .message.received span { background: #e9e9eb; color: black; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="admin-login-view">
+        <h2>Admin Login</h2>
+        <input type="email" id="admin-email" placeholder="Email Admin">
+        <input type="password" id="admin-password" placeholder="Password Admin">
+        <button onclick="handleAdminLogin()">Login</button>
+    </div>
+
+    <div id="admin-dashboard-view" class="hidden">
+        <div id="admin-user-list">
+            <h3>Daftar Chat</h3>
+            <ul id="conversations-list"></ul>
+        </div>
+        <div id="admin-chat-window">
+            <h3 id="admin-chat-header">Pilih Chat</h3>
+            <div class="messages" id="admin-messages"></div>
+            <div id="admin-chat-form" class="hidden">
+                <input type="text" id="admin-message-input" placeholder="Ketik balasan...">
+                <button onclick="sendMessageAsAdmin()">Kirim Balasan</button>
+            </div>
+        </div>
+        <button id="logout-btn" onclick="handleLogout()">Logout</button>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+<script>
+    // ===== PENTING: GUNAKAN KONFIGURASI FIREBASE YANG SAMA =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyA_2R9DBUUpibY2u6MEenCTDDOZ-w0vlx8",
+      authDomain: "aplikasi-chat-d05ce.firebaseapp.com",
+      projectId: "aplikasi-chat-d05ce",
+      storageBucket: "aplikasi-chat-d05ce.firebasestorage.app",
+      messagingSenderId: "115036538813",
+      appId: "1:115036538813:web:4113ceb9e5a89c311534d4",
+      measurementId: "G-XFNNC4HYM6"
+    };
+    
+    // ===== UID ADMIN UNTUK VALIDASI DAN MENGIRIM PESAN =====
+    const ADMIN_UID = "Vjsy4i8HKBaLC1994rmB63IobV02"; 
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let selectedConversationId = null;
+    let unsubscribeMessages = null;
+
+    const adminLoginView = document.getElementById('admin-login-view');
+    const adminDashboardView = document.getElementById('admin-dashboard-view');
+    
+    auth.onAuthStateChanged(user => {
+        if (user && user.uid === ADMIN_UID) {
+            currentUser = { uid: user.uid };
+            adminLoginView.classList.add('hidden');
+            adminDashboardView.classList.remove('hidden');
+            loadUserConversations();
+        } else {
+            currentUser = null;
+            adminLoginView.classList.remove('hidden');
+            adminDashboardView.classList.add('hidden');
+            if (unsubscribeMessages) unsubscribeMessages();
+        }
+    });
+
+    async function handleAdminLogin() {
+        const email = document.getElementById('admin-email').value;
+        const password = document.getElementById('admin-password').value;
+        try {
+            await auth.signInWithEmailAndPassword(email, password);
+        } catch (error) {
+            alert("Login Admin Gagal: " + error.message);
+        }
+    }
+
+    function handleLogout() {
+        auth.signOut();
+    }
+    
+    // --- Salin fungsi-fungsi di bawah ini dari kode sebelumnya ---
+    // loadUserConversations, selectConversationForAdmin, loadMessagesForAdmin,
+    // sendMessageAsAdmin, createMessageElement
+    async function loadUserConversations() { /* ... fungsi sama persis seperti sebelumnya ... */ }
+    async function selectConversationForAdmin(userId, userName) { /* ... fungsi sama persis seperti sebelumnya ... */ }
+    function loadMessagesForAdmin(userId) { /* ... fungsi sama persis seperti sebelumnya ... */ }
+    async function sendMessageAsAdmin() { /* ... fungsi sama persis seperti sebelumnya ... */ }
+    function createMessageElement(text, isSent) { /* ... fungsi sama persis seperti sebelumnya ... */ }
+    
+    async function loadUserConversations() {
+        const listUl = document.getElementById('conversations-list');
+        db.collection('chats').orderBy('lastUpdate', 'desc').onSnapshot(async snapshot => {
+            listUl.innerHTML = '';
+            for (const chatDoc of snapshot.docs) {
+                const userId = chatDoc.id;
+                const userDoc = await db.collection('users').doc(userId).get();
+                const userName = userDoc.exists ? userDoc.data().name : 'Guest';
+                const userWA = userDoc.exists ? userDoc.data().whatsapp : '';
+
+                const li = document.createElement('li');
+                li.innerHTML = `${userName} <br><small>${userWA}</small>`;
+                li.setAttribute('data-uid', userId);
+                li.onclick = () => selectConversationForAdmin(userId, userName);
+                if (chatDoc.data().userHasUnread) li.style.fontWeight = 'bold';
+                listUl.appendChild(li);
+            }
+        });
+    }
+    
+    async function selectConversationForAdmin(userId, userName) {
+        selectedConversationId = userId;
+        document.getElementById('admin-chat-header').textContent = `Balas pesan dari ${userName}`;
+        document.getElementById('admin-chat-form').classList.remove('hidden');
+        document.querySelectorAll('#conversations-list li').forEach(li => {
+            li.classList.remove('active');
+            if (li.getAttribute('data-uid') === userId) li.classList.add('active');
+        });
+        await db.collection('chats').doc(userId).set({ userHasUnread: false }, { merge: true });
+        loadMessagesForAdmin(userId);
+    }
+    
+    function loadMessagesForAdmin(userId) {
+        const messagesDiv = document.getElementById('admin-messages');
+        if (unsubscribeMessages) unsubscribeMessages();
+        unsubscribeMessages = db.collection('chats').doc(userId).collection('messages').orderBy('timestamp')
+            .onSnapshot(snapshot => {
+                messagesDiv.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const msg = doc.data();
+                    const el = createMessageElement(msg.text, msg.senderId === ADMIN_UID);
+                    messagesDiv.appendChild(el);
+                });
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            });
+    }
+
+    async function sendMessageAsAdmin() {
+        const input = document.getElementById('admin-message-input');
+        const text = input.value.trim();
+        if (text === '' || !selectedConversationId) return;
+        const message = { text, senderId: ADMIN_UID, receiverId: selectedConversationId, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+        await db.collection('chats').doc(selectedConversationId).collection('messages').add(message);
+        await db.collection('chats').doc(selectedConversationId).set({ lastUpdate: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        input.value = '';
+    }
+
+    function createMessageElement(text, isSent) {
+        const el = document.createElement('div');
+        el.classList.add('message', isSent ? 'sent' : 'received');
+        el.innerHTML = `<span>${text}</span>`;
+        return el;
+    }
+</script>
+</body>
+</html>
