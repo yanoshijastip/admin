@@ -33,18 +33,16 @@
         .conv-info .timestamp { font-size: 0.75em; color: var(--text-secondary); }
         .notification-badge { background-color: var(--notification-bg); color: white; font-size: 0.7em; font-weight: bold; border-radius: 50%; padding: 3px 6px; margin-top: 5px; display: inline-block; }
         
-        /* === TIGA PILAR CSS UNTUK STICKY FOOTER === */
-
-        /* Pilar 1: Kontainer Utama Area Chat */
+        /* === PILAR 1: KONTAINER UTAMA AREA CHAT === */
         .chat-area {
             width: 100%;
-            height: 100vh; /* Wajib ada: tinggi harus setinggi layar */
-            display: flex; /* Wajib ada */
-            flex-direction: column; /* Wajib ada: mengatur item secara vertikal */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
             transition: transform 0.3s ease;
         }
         
-        /* Pilar 3a: Header tidak boleh menyusut */
+        /* === PILAR 3a: HEADER TIDAK BOLEH MENYUSUT === */
         .chat-header {
             padding: 20px;
             border-bottom: 1px solid var(--border-color);
@@ -54,28 +52,26 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-shrink: 0; /* Wajib ada */
+            flex-shrink: 0; /* <-- Sangat Penting */
         }
         #admin-chat-header { margin: 0; font-size: 1.2em; }
 
-        /* Pilar 2: Area Pesan yang Bisa Scroll */
+        /* === PILAR 2: AREA PESAN YANG BISA SCROLL === */
         .messages-container {
-            flex-grow: 1; /* Wajib ada: mengisi semua sisa ruang */
-            overflow-y: auto; /* Wajib ada: membuat HANYA area ini yang bisa di-scroll */
+            flex-grow: 1; /* <-- Sangat Penting */
+            overflow-y: auto; /* <-- Sangat Penting */
             padding: 20px;
             background-color: var(--chat-bg);
         }
 
-        /* Pilar 3b: Area Input tidak boleh menyusut */
+        /* === PILAR 3b: AREA INPUT TIDAK BOLEH MENYUSUT === */
         .chat-input-area {
             padding: 15px 20px;
             border-top: 1px solid var(--border-color);
             background-color: var(--header-bg);
-            flex-shrink: 0; /* Wajib ada */
+            flex-shrink: 0; /* <-- Sangat Penting */
         }
-
-        /* === AKHIR DARI TIGA PILAR CSS === */
-
+        
         .message { margin-bottom: 10px; max-width: 70%; display: flex; }
         .message.sent { margin-left: auto; justify-content: flex-end; }
         .message.received { justify-content: flex-start; }
@@ -380,5 +376,8 @@
         auth.signOut();
     }
 </script>
+
+</body>
+</html>
 </body>
 </html>
